@@ -67,7 +67,7 @@ export class ServerHostingStack extends Stack {
 
     const server = new ec2.Instance(this, `${prefix}Server`, {
       // 2 vCPU, 8 GB RAM should be enough for most factories
-      instanceType: new ec2.InstanceType("m5a.large"),
+      instanceType: new ec2.InstanceType("m5a.xlarge"),
       // get exact ami from parameter exported by canonical
       // https://discourse.ubuntu.com/t/finding-ubuntu-images-with-the-aws-ssm-parameter-store/15507
       machineImage: ec2.MachineImage.fromSsmParameter("/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id"),
@@ -87,6 +87,7 @@ export class ServerHostingStack extends Stack {
 
     // Add Base SSM Permissions, so we can use AWS Session Manager to connect to our server, rather than external SSH.
     server.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
+    server.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy"'));
 
     //////////////////////////////
     // Configure save bucket
@@ -99,7 +100,9 @@ export class ServerHostingStack extends Stack {
         // if bucket does not exist create a new bucket
         // autogenerate name to reduce possibility of conflict
       } else {
-        return new s3.Bucket(this, `${prefix}SavesBucket`);
+        return new s3.Bucket(this, `${prefix}SavesBucket`, {
+          versioned: true
+        });
       }
     }
 
