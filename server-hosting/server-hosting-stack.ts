@@ -64,10 +64,13 @@ export class ServerHostingStack extends Stack {
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(7777), "Game port")
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(15000), "Beacon port")
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.udp(15777), "Query port")
+    securityGroup.addIngressRule(ec2.Peer.ipv4("84.227.104.206/32"), ec2.Port.tcpRange(20, 21), "FTP from local network")
+    securityGroup.addIngressRule(ec2.Peer.ipv4("84.227.104.206/32"), ec2.Port.tcpRange(1024, 1048), "FTP from local network")
+    securityGroup.addIngressRule(ec2.Peer.ipv4("84.227.104.206/32"), ec2.Port.tcp(22), "SSH from local network")
 
     const server = new ec2.Instance(this, `${prefix}Server`, {
       // 2 vCPU, 8 GB RAM should be enough for most factories
-      instanceType: new ec2.InstanceType("m5a.large"),
+      instanceType: new ec2.InstanceType("m6i.xlarge"),
       // get exact ami from parameter exported by canonical
       // https://discourse.ubuntu.com/t/finding-ubuntu-images-with-the-aws-ssm-parameter-store/15507
       machineImage: ec2.MachineImage.fromSsmParameter("/aws/service/canonical/ubuntu/server/20.04/stable/current/amd64/hvm/ebs-gp2/ami-id"),
@@ -87,6 +90,7 @@ export class ServerHostingStack extends Stack {
 
     // Add Base SSM Permissions, so we can use AWS Session Manager to connect to our server, rather than external SSH.
     server.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
+    server.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy"'));
 
     //////////////////////////////
     // Configure save bucket
@@ -99,7 +103,9 @@ export class ServerHostingStack extends Stack {
         // if bucket does not exist create a new bucket
         // autogenerate name to reduce possibility of conflict
       } else {
-        return new s3.Bucket(this, `${prefix}SavesBucket`);
+        return new s3.Bucket(this, `${prefix}SavesBucket`, {
+          versioned: true
+        });
       }
     }
 
